@@ -1,0 +1,139 @@
+---
+title: "heart_attack"
+author: "analysis"
+date: "2025-05-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Dataset Description
+Ce dataset contient des données cliniques de patients utilisées pour déterminer la présence ou non d’un problème cardiaque.
+
+Chaque ligne correspond à un patient, avec plusieurs caractéristiques mesurées lors d’un examen médical.
+
+•	L’âge des patients varie, et il est indiqué dans la colonne Age, en années.
+
+•	Le sexe des patients est codé dans la colonne Gender, où 0 représente un homme et 1 représente une femme.
+
+•	La fréquence cardiaque (Heart.rate) est mesurée en battements par minute.
+
+•	La pression artérielle est divisée en deux mesures : la pression systolique (Systolic.blood.pressure) et la pression diastolique (Diastolic.blood.pressure), exprimées en mmHg.
+
+•	La colonne Blood.sugar indique le taux de sucre dans le sang, mesuré en mg/dL.
+
+•	Le niveau de CK-MB (CK.MB) est un indicateur enzymatique de dommages au muscle cardiaque. Des niveaux élevés peuvent signaler une crise cardiaque.
+
+•	La Troponin est une protéine libérée lors d’un infarctus du myocarde ; elle est considérée comme un marqueur très spécifique de lésions cardiaques.
+
+•	Enfin, la colonne Result contient le diagnostic final : "positive" signifie que le patient présente des signes de problème cardiaque, tandis que "negative" signifie qu'aucune anomalie n'a été détectée
+
+
+```{r}
+data <- read.csv("Medicaldataset.csv", sep=",", dec=".", header=TRUE, stringsAsFactors=TRUE)
+head(data)
+## Ce graphique montre qu'il n'y a pas de relation claire entre l’âge et le taux de troponine. La majorité des valeurs sont proches de zéro, surtout entre 40 et 80 ans, avec quelques pics élevés.
+plot(data$Age, data$Troponin, xlab = "Âge", ylab = "Troponine", pch = 19, cex = 1.5)
+names(data)
+nrow(data)
+ncol(data)
+typeof(data)
+str(data)
+##Ce graphique montre une corrélation positive entre la pression systolique (sys) et la pression diastolique (dia) : plus la pression systolique est élevée, plus la pression diastolique tend à l’être aussi.
+plot(data$Systolic.blood.pressure, data$Diastolic.blood.pressure, xlab = "sys", ylab = "dia", cex = 1, pch = 20)
+dim(data)
+##La commande colSums(is.na(data)) montre qu’il n’y a aucune valeur manquante dans les colonnes du jeu de données. Toutes les variables sont complètes et prêtes pour l’analyse.
+colSums(is.na(data))
+duplicated_rows <- duplicated(data)
+duplicated_data <- data[duplicated_rows, ]
+duplicated_data
+sapply(data, function(x) length(unique(x)))
+table(data$Result)
+barplot(table(data$Systolic.blood.pressure))
+##Ce diagramme en barres montre que le nombre de cas positifs est supérieur au nombre de cas négatifs dans la variable Result. Cela indique une prédominance des résultats positifs dans l’échantillon.
+barplot(table(data$Result))
+##Le résumé statistique montre que l’âge des patients varie de 14 à 103 ans, avec une moyenne de 56,2 ans. La majorité des patients a entre 47 et 65 ans, ce qui correspond à l’intervalle interquartile.
+summary(data)
+summary(data$Age)
+subset(data, data$Age < 50)
+##Genre 0 :Âge moyen : 57,96 ans Médiane : 60 ans Âge minimum : 14 ans, maximum : 103 ans Intervalle interquartile (IQR) : de 49 à 70 ans Genre 1 : Âge moyen : 55,28 ans Médiane : 56 ans Âge minimum : 19 ans, maximum : 100 ans IQR : de 47 à 65 ans
+tapply(data$Age, data$Gender, summary)
+##Le code ci-dessous permet de représenter graphiquement la distribution de la variable **pression artérielle systolique** (`Systolic.blood.pressure`) présente dans le jeu de données `data`.  On utilise une couleur bleue pour les barres, un contour blanc, et on fixe la hauteur maximale de l’axe Y à 5 pour lisibilité.
+hist(data$Systolic.blood.pressure, col = "blue", border = "white", ylim = c(0, 5), labels = TRUE, xlab = "Systolic blood pressure", ylab = "nb d'observations")
+## l'histogramme en bleu montre la distribution des valeurs, et la courbe rouge montre une estimation lissée de cette distribution (dite "courbe de densité").
+hist(data$Systolic.blood.pressure, col = "blue", border = "white", ylim = c(0, 0.05), labels = TRUE, xlab = "Systolic blood pressure", ylab = "nb d'observations", prob = TRUE)
+lines(density(data$Systolic.blood.pressure), lwd = 3, col = "red")
+plot(density(data$Systolic.blood.pressure), main = "Estimateur à noyau", xlab = "Sys")
+
+q <- levels(factor(data$Result))
+q
+pie(table(data$Result), col = rainbow(length(q)))
+r <- table(factor(data$Result))
+prc <- (r / nrow(data)) * 100
+prc
+pie(table(data$Result), col = rainbow(length(q)), labels = paste(q, prc, "%"))
+
+library(plotrix)
+x <- table(data$Result)
+d <- levels(factor(data$Result))
+d
+pie3D(x, explode = 0.1, main = "Avoir une crise cardiaque", labels = paste(q, "-", prc, "%"))
+
+plot(x = data$Age, y = data$Blood.sugar)
+
+library(MASS)
+tmp <- data[, c("Blood.sugar", "Age")]
+tmp <- tmp[complete.cases(tmp), ]
+filled.contour(kde2d(tmp$Blood.sugar, tmp$Age), color = terrain.colors)
+
+plot(data$Blood.sugar[data$Gender == "0"], data$Age[data$Gender == "0"], pch = 15, col = "blue", main = "Répartition des âges des hommes selon leur glycémie", xlab = "Blood sugar", ylab = "Age", las = 1)
+points(data$Blood.sugar[data$Gender == "1"], data$Age[data$Gender == "1"], pch = 10, col = "red")
+legend(x = "bottomright", legend = c("Homme", "Femme"), col = c("blue", "red"), pch = c(15, 10))
+
+cor(data$Blood.sugar, data$Age, use = "complete.obs")
+reg <- lm(data$Age ~ data$Blood.sugar)
+summary(reg)
+plot(data$Blood.sugar, data$Age, ylab = "Age", xlab = "Blood sugar", col = "blue", pch = 15)
+abline(reg, col = "deepskyblue4")
+
+t.test(data$Heart.rate)
+t <- table(data$Result, data$Gender)
+t
+prop.table(t)
+chisq.test(data$Result, data$Gender)
+fisher.test(data$Result, data$Gender)
+mosaicplot(Gender ~ Result, data = data, shade = TRUE, main = "Graphe en mosaïque")
+
+library(FactoMineR)
+library(factoextra)
+library(corrplot)
+
+resultat <- PCA(data[data$Result == "positive", c("Heart.rate", "Systolic.blood.pressure", "Diastolic.blood.pressure", "Blood.sugar", "CK.MB", "Troponin")], scale.unit = TRUE, graph = TRUE)
+eigval <- get_eigenvalue(resultat)
+eigval
+fviz_eig(resultat, addlabels = TRUE, ylim = c(0, 50))
+
+var <- get_pca_var(resultat)
+var
+corrplot(var$cos2, is.corr = FALSE, tl.cex = 0.4)
+corrplot(var$cos2, is.corr = FALSE, tl.cex = 0.4, method = "number")
+
+fviz_pca_var(resultat, 
+             col.var = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE)
+
+data_matrix <- matrix(c(10, 20, 30, 40), nrow = 2)
+chisq.test(data_matrix)
+res <- CA(data_matrix, graph = TRUE)
+valpropres <- get_eigenvalue(resultat)
+valpropres
+fviz_screeplot(resultat, addlabels = TRUE, ylim = c(0, 50))
+ind <- get_pca_ind(resultat)
+ind
+
+
+```
